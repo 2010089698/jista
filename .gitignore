@@ -1,0 +1,25 @@
+# Node
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# TypeScript
+*.tsbuildinfo
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+
+# Expo
+.expo-go/
+
+# Misc
+.env
