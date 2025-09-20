@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = "http://172.30.80.81:8000";
+const DEFAULT_API_BASE_URL = "https://jista-server-994293554156.asia-northeast1.run.app";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;

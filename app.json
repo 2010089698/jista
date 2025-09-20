@@ -13,10 +13,18 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.jista.app",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e1ac532e-7fbc-4b90-9d88-a9a2e9a5338c"
+      }
+    },
+    "owner": "2010089698"
   }
 }
