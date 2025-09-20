@@ -590,10 +590,14 @@ class StartlistService:
         candidates.sort(key=lambda x: (x["score"], -len(x["row_text"])), reverse=True)
         pick = candidates[:3]
         
-        # 結果を整形
+        # 結果を整形（重複時刻を除去）
         start_times = []
+        seen_times = set()
         for c in pick:
             for time_str in c["times"]:
+                if time_str in seen_times:
+                    continue
+                seen_times.add(time_str)
                 iso_time = self.combine_date_time(event_date, time_str) if event_date else time_str
                 start_times.append({
                     "competitor": competitor_name or "Unknown",
