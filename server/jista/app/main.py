@@ -1,9 +1,11 @@
 """FastAPI entrypoint for the Jista backend."""
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from .models import EventsResponse, StartTimeResponse
 from .services.event_service import EventService
+from .services.startlist_service import StartlistService
 
 app = FastAPI(title='Jista API', version='0.1.0')
 
@@ -16,10 +18,15 @@ app.add_middleware(
 )
 
 _service = EventService()
+_startlist_service = StartlistService()
 
 
 def get_event_service() -> EventService:
     return _service
+
+
+def get_startlist_service() -> StartlistService:
+    return _startlist_service
 
 
 @app.get('/health')
@@ -46,3 +53,27 @@ def get_start_times(
         return service.get_event_start_times(event_id, competitor)
     except KeyError as exc:  # pragma: no cover - simple error mapping
         raise HTTPException(status_code=404, detail='Event not found') from exc
+
+
+class FetchStartlistRequest(BaseModel):
+    event_url: str = Field(..., description="Japan-O-Entryの大会ページURL")
+
+
+@app.post('/events/fetch-startlist', response_model=StartTimeResponse)
+def fetch_startlist_from_joe(
+    request: FetchStartlistRequest,
+    competitor: str | None = Query(None),
+    competitor_class: str | None = Query(None),
+    event_date: str | None = Query(None),
+    startlist_service: StartlistService = Depends(get_startlist_service),
+) -> StartTimeResponse:
+    """Japan-O-Entryからスタートリストを取得・解析"""
+    try:
+        result = startlist_service.fetch_event_start_times(
+            request.event_url, competitor, competitor_class, event_date
+        )
+        return StartTimeResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(exc)}")

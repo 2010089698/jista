@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,16 +27,18 @@ export const EventList: React.FC<Props> = ({ events, onSelect }) => {
   }
 
   return (
-    <FlatList
-      data={events}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <TouchableOpacity style={styles.item} onPress={() => onSelect(item.id)}>
+    <View>
+      {events.map((item) => (
+        <TouchableOpacity 
+          key={item.id} 
+          style={styles.item} 
+          onPress={() => onSelect(item.id)}
+        >
           <Text style={styles.itemTitle}>{item.name}</Text>
           <Text style={styles.itemSubtitle}>{formatDate(item.date)}</Text>
         </TouchableOpacity>
-      )}
-    />
+      ))}
+    </View>
   );
 };
 

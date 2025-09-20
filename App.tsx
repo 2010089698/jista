@@ -1,18 +1,21 @@
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { EventProvider } from "./src/hooks/useEventSelection";
 import MainScreen from "./src/screens/MainScreen";
 
 const App: React.FC = () => {
   return (
-    <EventProvider>
-      <SafeAreaView style={styles.safeArea}>
-        <MainScreen />
-        <StatusBar style="dark" />
-      </SafeAreaView>
-    </EventProvider>
+    <SafeAreaProvider>
+      <EventProvider>
+        <SafeAreaView style={styles.safeArea}>
+          <MainScreen />
+          <StatusBar style="dark" />
+        </SafeAreaView>
+      </EventProvider>
+    </SafeAreaProvider>
   );
 };
 
