@@ -3,9 +3,10 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .models import EventsResponse, StartTimeResponse
+from .models import EventsResponse, StartTimeResponse, JOEEventsResponse
 from .services.event_service import EventService
 from .services.startlist_service import StartlistService
+from .services.joe_scraper_service import JOEScraperService
 
 app = FastAPI(title='Jista API', version='0.1.0')
 
@@ -19,6 +20,7 @@ app.add_middleware(
 
 _service = EventService()
 _startlist_service = StartlistService()
+_joe_scraper_service = JOEScraperService()
 
 
 def get_event_service() -> EventService:
@@ -27,6 +29,10 @@ def get_event_service() -> EventService:
 
 def get_startlist_service() -> StartlistService:
     return _startlist_service
+
+
+def get_joe_scraper_service() -> JOEScraperService:
+    return _joe_scraper_service
 
 
 @app.get('/health')
@@ -77,3 +83,15 @@ def fetch_startlist_from_joe(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(exc)}")
+
+
+@app.get('/events/joe-list', response_model=JOEEventsResponse)
+def get_joe_events(
+    scraper_service: JOEScraperService = Depends(get_joe_scraper_service),
+) -> JOEEventsResponse:
+    """Japan-O-Entryからイベント一覧を取得"""
+    try:
+        events = scraper_service.scrape_events()
+        return JOEEventsResponse(events=events)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch Japan-O-Entry events: {str(exc)}")

@@ -105,12 +105,16 @@ gcloud run deploy jista-server --image gcr.io/jista-472702/jista-server --platfo
 ### 最近の修正（2024年9月）
 
 - **Queryパラメータ対応**: `fetch-startlist`エンドポイントでクエリパラメータ（`competitor`, `competitor_class`, `event_date`）を正しく受け取れるように修正
+- **Japan-O-Entryイベント一覧機能**: URL入力ではなく、イベント一覧から選択してスタートリストを取得できる機能を追加
+  - 新しいエンドポイント: `/events/joe-list` - Japan-O-Entryからイベント一覧を取得
+  - スクレイピング機能: Japan-O-Entryのトップページからリアルタイムでイベント情報を取得
+  - UI改善: イベント一覧表示と選択機能を追加
 - **デプロイ完了**: 修正版が本番環境に反映済み
 
 ## 次のステップ
 
-- Japan-O-Entry からの実データ取得実装
-- スタート時刻のPDF解析ロジック
+- スタート時刻のPDF解析ロジックの改善
 - 匿名IDでの継続率計測
 - UI/UXのブラッシュアップおよびオフラインキャッシュの充実
+- イベント一覧の検索・フィルタリング機能
 

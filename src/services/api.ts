@@ -1,11 +1,23 @@
 import { API_BASE_URL } from "../config";
 import { EventStartTimes, EventSummary } from "../types/events";
 
+export type JOEEvent = {
+  id: string;
+  name: string;
+  date: string;
+  url: string;
+  status: string;
+};
+
 type EventsResponse = {
   events: EventSummary[];
 };
 
 type StartTimesResponse = EventStartTimes;
+
+type JOEEventsResponse = {
+  events: JOEEvent[];
+};
 
 const DEFAULT_TIMEOUT_MS = 10000;
 
@@ -131,5 +143,24 @@ export const fetchStartlistFromJOE = async (
     throw new Error(
       `Japan-O-Entryからのスタートリスト取得に失敗しました: ${e.message}`,
     );
+  }
+};
+
+export const fetchJOEEvents = async (): Promise<JOEEvent[]> => {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/events/joe-list`);
+    const data = await handleResponse<JOEEventsResponse>(response);
+    return data.events;
+  } catch (err) {
+    const e = err as Error;
+    if (
+      !e.message.includes("タイムアウト") &&
+      !e.message.includes("API request failed")
+    ) {
+      throw new Error(
+        "Japan-O-Entryイベント一覧の取得に失敗しました。ネットワークまたはAPIのURLを確認してください。",
+      );
+    }
+    throw e;
   }
 };

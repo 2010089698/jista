@@ -11,8 +11,9 @@ import {
 } from "react-native";
 
 import EventList from "../components/EventList";
+import { JOEEventList } from "../components/JOEEventList";
 import { useEventSelection } from "../hooks/useEventSelection";
-import { fetchStartlistFromJOE } from "../services/api";
+import { fetchStartlistFromJOE, fetchJOEEvents, JOEEvent } from "../services/api";
 import { persistEvent, loadMostRecentEvent, loadStoredEvents } from "../services/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EventStartTimes } from "../types/events";
@@ -36,6 +37,10 @@ const MainScreen: React.FC = () => {
   const [joeResult, setJoeResult] = useState<EventStartTimes | null>(null);
   const [savedEvents, setSavedEvents] = useState<EventStartTimes[]>([]);
   const [showSavedEvents, setShowSavedEvents] = useState(false);
+  const [joeEvents, setJoeEvents] = useState<JOEEvent[]>([]);
+  const [isLoadingJOEEvents, setIsLoadingJOEEvents] = useState(false);
+  const [joeEventsError, setJoeEventsError] = useState("");
+  const [showJOEEvents, setShowJOEEvents] = useState(false);
 
   // 保存済みイベントを読み込む関数を追加
   const loadSavedEvents = async () => {
@@ -77,6 +82,8 @@ const MainScreen: React.FC = () => {
   // 保存済みイベントを選択する関数
   const handleSelectSavedEvent = (event: EventStartTimes) => {
     setJoeResult(event);
+    // selectedEventも更新して一貫性を保つ
+    // setStateは利用できないため、setJoeResultのみで対応
     setShowSavedEvents(false);
   };
 
@@ -90,6 +97,29 @@ const MainScreen: React.FC = () => {
     } catch (error) {
       console.error("イベントの削除に失敗:", error);
     }
+  };
+
+  // Japan-O-Entryのイベント一覧を取得する関数
+  const handleFetchJOEEvents = async () => {
+    setIsLoadingJOEEvents(true);
+    setJoeEventsError("");
+    
+    try {
+      const events = await fetchJOEEvents();
+      setJoeEvents(events);
+      setShowJOEEvents(true);
+    } catch (error) {
+      console.error("Japan-O-Entryイベント一覧の取得に失敗:", error);
+      setJoeEventsError(error instanceof Error ? error.message : "イベント一覧の取得に失敗しました");
+    } finally {
+      setIsLoadingJOEEvents(false);
+    }
+  };
+
+  // Japan-O-Entryのイベントを選択した時の処理
+  const handleSelectJOEEvent = (event: JOEEvent) => {
+    setJoeEventUrl(event.url);
+    setShowJOEEvents(false);
   };
 
   const handleFetchFromJOE = async () => {
@@ -164,11 +194,6 @@ const MainScreen: React.FC = () => {
           </Text>
         )}
         {error && <Text style={styles.errorText}>{error}</Text>}
-        <Button
-          title={isLoading ? "更新中..." : "イベントを更新"}
-          onPress={() => void refreshEvents()}
-          disabled={isLoading}
-        />
       </View>
 
       <View style={styles.section}>
@@ -192,6 +217,27 @@ const MainScreen: React.FC = () => {
           Japan-O-Entryの大会ページから直接スタートリストを取得できます。
         </Text>
         
+        {/* Japan-O-Entryイベント一覧取得ボタン */}
+        <Button
+          title={isLoadingJOEEvents ? "取得中..." : "Japan-O-Entryイベント一覧を表示"}
+          onPress={handleFetchJOEEvents}
+          disabled={isLoadingJOEEvents}
+        />
+        
+        {joeEventsError && <Text style={styles.errorText}>{joeEventsError}</Text>}
+        
+        {/* Japan-O-Entryイベント一覧表示 */}
+        {showJOEEvents && joeEvents.length > 0 && (
+          <View style={styles.joeEventsContainer}>
+            <Text style={styles.joeEventsTitle}>Japan-O-Entryイベント一覧</Text>
+            <JOEEventList events={joeEvents} onSelect={handleSelectJOEEvent} />
+            <Button
+              title="一覧を閉じる"
+              onPress={() => setShowJOEEvents(false)}
+            />
+          </View>
+        )}
+        
         <TextInput
           style={styles.input}
           placeholder="大会ページURL（例：https://japan-o-entry.com/event/view/1923）"
@@ -202,23 +248,6 @@ const MainScreen: React.FC = () => {
           keyboardType="url"
         />
         
-        <TextInput
-          style={[styles.input, styles.inputSpacing]}
-          placeholder="クラス（任意、例：M35, W21A）"
-          value={competitorClass}
-          onChangeText={setCompetitorClass}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        
-        <TextInput
-          style={[styles.input, styles.inputSpacing]}
-          placeholder="大会日（任意、例：2025-10-12）"
-          value={eventDate}
-          onChangeText={setEventDate}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
         
         {joeError && <Text style={styles.errorText}>{joeError}</Text>}
         
@@ -278,6 +307,21 @@ const MainScreen: React.FC = () => {
                       <Text style={styles.savedEventMeta}>
                         スタート時刻: {event.startTimes?.length || 0}件
                       </Text>
+                      {/* スタート時刻のプレビューを追加 */}
+                      {event.startTimes && event.startTimes.length > 0 && (
+                        <View style={styles.startTimePreview}>
+                          {event.startTimes.slice(0, 3).map((entry, idx) => (
+                            <Text key={idx} style={styles.previewTime}>
+                              {entry.competitor}: {entry.startTime}
+                            </Text>
+                          ))}
+                          {event.startTimes.length > 3 && (
+                            <Text style={styles.moreText}>
+                              ...他{event.startTimes.length - 3}件
+                            </Text>
+                          )}
+                        </View>
+                      )}
                       <Text style={styles.savedEventFetched}>
                         取得: {new Date(event.fetchedAt).toLocaleString()}
                       </Text>
@@ -300,88 +344,7 @@ const MainScreen: React.FC = () => {
         )}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>イベント一覧</Text>
-        {isLoading && events.length === 0 ? (
-          <ActivityIndicator style={styles.loader} />
-        ) : (
-          <EventList events={events} onSelect={handleSelectEvent} />
-        )}
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>選択したイベントのスタート時刻</Text>
-        {selectedEvent ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{selectedEvent.name}</Text>
-            <Text style={styles.cardSubtitle}>
-              {new Date(selectedEvent.date).toLocaleString()}
-            </Text>
-            <Text style={styles.cardMeta}>
-              取得日時: {new Date(selectedEvent.fetchedAt).toLocaleString()}
-            </Text>
-            <View style={styles.startTimeList}>
-              {selectedEvent.startTimes.map((entry, index) => (
-                <View
-                  key={`${entry.competitor}-${entry.startTime}`}
-                  style={[
-                    styles.startTimeRow,
-                    index > 0 && styles.startTimeRowSpacing,
-                  ]}
-                >
-                  <Text style={styles.startTimeName}>{entry.competitor}</Text>
-                  <Text style={styles.startTimeValue}>{entry.startTime}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : joeResult ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{joeResult.name}</Text>
-            <Text style={styles.cardSubtitle}>
-              {new Date(joeResult.date).toLocaleString()}
-            </Text>
-            <Text style={styles.cardMeta}>
-              取得日時: {new Date(joeResult.fetchedAt).toLocaleString()}
-            </Text>
-            <Text style={styles.debugText}>
-              表示デバッグ: startTimes数={joeResult.startTimes?.length || 0}
-              {'\n'}条件チェック: startTimes存在={!!joeResult.startTimes}, 長さ={joeResult.startTimes?.length || 0}
-              {'\n'}条件結果: {joeResult.startTimes && joeResult.startTimes.length > 0 ? 'データ表示' : '空データ表示'}
-            </Text>
-            <View style={styles.startTimeList}>
-              {joeResult.startTimes && joeResult.startTimes.length > 0 ? (
-                <>
-                  <Text style={styles.debugText}>✅ データ表示中 - {joeResult.startTimes.length}件</Text>
-                  {joeResult.startTimes.map((entry, index) => {
-                    console.log(`レンダリング中: ${entry.competitor} - ${entry.startTime}`);
-                    return (
-                      <View
-                        key={`${entry.competitor}-${entry.startTime}`}
-                        style={[
-                          styles.startTimeRow,
-                          index > 0 && styles.startTimeRowSpacing,
-                        ]}
-                      >
-                        <Text style={styles.startTimeName}>{entry.competitor}</Text>
-                        <Text style={styles.startTimeValue}>{entry.startTime}</Text>
-                      </View>
-                    );
-                  })}
-                </>
-              ) : (
-                <Text style={styles.errorText}>
-                  ❌ スタート時刻データが空です。APIレスポンス: {JSON.stringify(joeResult, null, 2)}
-                </Text>
-              )}
-            </View>
-          </View>
-        ) : (
-          <Text style={styles.sectionDescription}>
-            イベントを選択するか、Japan-O-Entryから取得するとスタート時刻がここに表示されます。
-          </Text>
-        )}
-      </View>
     </ScrollView>
   );
 };
@@ -529,6 +492,36 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "bold",
+  },
+  joeEventsContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  joeEventsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
+  },
+  startTimePreview: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 4,
+  },
+  previewTime: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  moreText: {
+    fontSize: 11,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });
 

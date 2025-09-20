@@ -7,6 +7,7 @@ jista/app/models.py
 jista/app/data/__init__.py
 jista/app/services/__init__.py
 jista/app/services/event_service.py
+jista/app/services/joe_scraper_service.py
 jista/app/services/startlist_service.py
 jista_server.egg-info/PKG-INFO
 jista_server.egg-info/SOURCES.txt
